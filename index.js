@@ -194,6 +194,6 @@ app.get('/track/:userid/week/:startDate', async (req, res) => {
 
   res.json(weekData);
 });
-app.listen(8000, () => {
+app.listen(10000, () => {
   console.log('Server is up and running');
 });
