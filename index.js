@@ -12,7 +12,6 @@ const cors = require('cors');
 const userModel = require('./models/userModel');
 const foodModel = require('./models/foodModel');
 const trackingModel = require('./models/trackingModel');
-const goalModel = require('./models/goalModel');
 const verifyToken = require('./verifyToken');
 
 // database connection
@@ -195,84 +194,6 @@ app.get('/track/:userid/week/:startDate', async (req, res) => {
 
   res.json(weekData);
 });
-app.post('/goals', verifyToken, async (req, res) => {
-  const {
-    userId,
-    date,
-    targetCalories,
-    targetProtein,
-    targetCarbs,
-    targetFats,
-    targetFiber,
-  } = req.body;
-
-  try {
-    const goal = await goalModel.findOneAndUpdate(
-      { userId, date },
-      { targetCalories, targetProtein, targetCarbs, targetFats, targetFiber },
-      { upsert: true, new: true }
-    );
-    res.status(200).send(goal);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({ message: 'Error setting goals' });
-  }
-});
-app.get('/goals/:userid', verifyToken, async (req, res) => {
-  const { userid } = req.params;
-
-  try {
-    const goals = await goalModel.find({ userId: userid });
-    res.status(200).send(goals);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({ message: 'Error fetching goals' });
-  }
-});
-app.get('/goals/:userid/:date', verifyToken, async (req, res) => {
-  const { userid, date } = req.params;
-
-  try {
-    const goal = await goalModel.findOne({ userId: userid, date });
-    const tracking = await trackingModel.find({
-      userId: userid,
-      eatenDate: date,
-    });
-
-    if (!goal || !tracking) {
-      return res
-        .status(404)
-        .send({ message: 'Goal or tracking data not found' });
-    }
-
-    const totals = tracking.reduce(
-      (acc, item) => ({
-        calories: acc.calories + item.details.calories,
-        protein: acc.protein + item.details.protein,
-        carbs: acc.carbs + item.details.carbohydrates,
-        fats: acc.fats + item.details.fat,
-        fiber: acc.fiber + item.details.fiber,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 }
-    );
-
-    const status =
-      totals.calories >= goal.targetCalories &&
-      totals.protein >= goal.targetProtein &&
-      totals.carbs >= goal.targetCarbs &&
-      totals.fats >= goal.targetFats &&
-      totals.fiber >= goal.targetFiber
-        ? 'met'
-        : 'not met';
-
-    await goalModel.findByIdAndUpdate(goal._id, { status });
-    res.status(200).send({ ...goal.toObject(), status });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({ message: 'Error evaluating goal progress' });
-  }
-});
-
 app.listen(10000, () => {
   console.log('Server is up and running');
 });
